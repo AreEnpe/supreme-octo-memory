@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VAULT // CLASSIFIED</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00ff88;
+    --red: #ff2244;
+    --amber: #ffaa00;
+    --dim: #003322;
+    --bg: #030a06;
+    --panel: #050f08;
+    --border: #00ff8833;
+    --glow: 0 0 20px #00ff8844, 0 0 40px #00ff8822;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,255,136,0.015) 2px,
+      rgba(0,255,136,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+    animation: scanroll 8s linear infinite;
+  }
+
+  @keyframes scanroll {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100px; }
+  }
+
+  /* Matrix rain canvas */
+  #matrix-bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0.07;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 50px;
+    animation: fadeDown 1s ease both;
+  }
+
+  .header-eyebrow {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    letter-spacing: 8px;
+    color: var(--amber);
+    margin-bottom: 12px;
+    opacity: 0.8;
+  }
+
+  .header h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(28px, 6vw, 56px);
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-shadow: 0 0 30px var(--green), 0 0 60px var(--green);
+    animation: glitch 6s infinite;
+  }
+
+  @keyframes glitch {
+    0%, 92%, 100% { transform: none; text-shadow: 0 0 30px var(--green), 0 0 60px #00ff8866; }
+    93% { transform: translateX(-3px); text-shadow: -3px 0 var(--red), 3px 0 #00aaff; }
+    94% { transform: translateX(3px); text-shadow: 3px 0 var(--red), -3px 0 #00aaff; }
+    95% { transform: none; text-shadow: 0 0 30px var(--green); }
+  }
+
+  .header-sub {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    letter-spacing: 5px;
+    color: #00ff8866;
+    margin-top: 10px;
+  }
+
+  /* Clock */
+  .live-clock {
+    text-align: center;
+    margin-bottom: 40px;
+    animation: fadeDown 1s 0.2s ease both;
+    opacity: 0;
+  }
+
+  .clock-display {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(20px, 4vw, 36px);
+    color: var(--amber);
+    text-shadow: 0 0 20px var(--amber);
+    letter-spacing: 4px;
+  }
+
+  .date-display {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #ffaa0077;
+    margin-top: 6px;
+  }
+
+  /* Panel base */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    animation: scanbeam 3s linear infinite;
+  }
+
+  @keyframes scanbeam {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .panel-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    letter-spacing: 5px;
+    color: var(--green);
+    opacity: 0.5;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+
+  /* Layers */
+  .layers-grid {
+    display: grid;
+    gap: 16px;
+  }
+
+  .layer {
+    background: rgba(0,255,136,0.03);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 18px 20px;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .layer.unlocked {
+    border-color: var(--green);
+    box-shadow: var(--glow);
+    background: rgba(0,255,136,0.06);
+  }
+
+  .layer.locked {
+    border-color: #ff224433;
+  }
+
+  .layer.locked .layer-content {
+    filter: blur(4px);
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .layer-number {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--amber);
+    background: rgba(255,170,0,0.1);
+    padding: 3px 8px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,170,0,0.3);
+    white-space: nowrap;
+  }
+
+  .layer-name {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: #00ff8888;
+  }
+
+  .layer-status {
+    margin-left: auto;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    border-radius: 2px;
+    font-family: 'Orbitron', monospace;
+  }
+
+  .status-locked { color: var(--red); border: 1px solid #ff224444; background: #ff22440a; }
+  .status-unlocked { color: var(--green); border: 1px solid #00ff8844; background: #00ff880a; }
+
+  .layer-content {
+    font-size: 13px;
+    line-height: 1.8;
+    color: #00ff88bb;
+    transition: filter 0.5s;
+  }
+
+  .code-box {
+    background: #000d05;
+    border: 1px solid #00ff8822;
+    border-radius: 3px;
+    padding: 14px 16px;
+    margin-top: 10px;
+    font-size: 14px;
+    letter-spacing: 3px;
+    word-break: break-all;
+    color: var(--green);
+    text-shadow: 0 0 8px var(--green);
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .code-tag {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #00ff8855;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* Input area */
+  .input-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .cipher-input {
+    flex: 1;
+    min-width: 180px;
+    background: #000d05;
+    border: 1px solid #00ff8844;
+    border-radius: 3px;
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 3px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .cipher-input:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 15px #00ff8833;
+  }
+
+  .cipher-input::placeholder { color: #00ff8833; letter-spacing: 2px; }
+
+  .btn {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 12px 20px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn:hover {
+    background: var(--green);
+    color: var(--bg);
+    box-shadow: 0 0 20px var(--green);
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-danger {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .btn-danger:hover {
+    background: var(--red);
+    color: white;
+    box-shadow: 0 0 20px var(--red);
+  }
+
+  /* Alert */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 3px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-top: 12px;
+    display: none;
+    animation: blinkIn 0.3s ease;
+  }
+
+  .alert.show { display: block; }
+  .alert-success { background: #00ff8811; border: 1px solid #00ff8844; color: var(--green); }
+  .alert-error { background: #ff224411; border: 1px solid #ff224444; color: var(--red); }
+  .alert-warn { background: #ffaa0011; border: 1px solid #ffaa0044; color: var(--amber); }
+
+  @keyframes blinkIn {
+    0% { opacity: 0; transform: translateY(-5px); }
+    100% { opacity: 1; transform: none; }
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 3px;
+    background: #00ff8811;
+    border-radius: 2px;
+    margin-bottom: 30px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--amber));
+    border-radius: 2px;
+    transition: width 0.6s ease;
+    box-shadow: 0 0 10px var(--green);
+  }
+
+  .progress-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #00ff8866;
+    text-align: right;
+    margin-bottom: 6px;
+  }
+
+  /* Hint countdown */
+  .hint-timer {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #ffaa0066;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  /* Vault reveal */
+  .vault-content {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+    animation: fadeUp 0.8s ease;
+  }
+
+  .vault-content.visible { display: block; }
+
+  .vault-icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .vault-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--green);
+    text-shadow: 0 0 30px var(--green);
+    letter-spacing: 4px;
+    margin-bottom: 12px;
+  }
+
+  .vault-subtitle {
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: #00ff8877;
+    margin-bottom: 30px;
+  }
+
+  .secret-message {
+    background: #000d05;
+    border: 1px solid var(--green);
+    border-radius: 4px;
+    padding: 24px;
+    box-shadow: var(--glow);
+    font-size: 15px;
+    line-height: 2;
+    color: var(--green);
+    text-shadow: 0 0 8px var(--green);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+
+  /* How-to panel */
+  .howto {
+    animation-delay: 0.4s;
+    opacity: 0;
+  }
+
+  .howto-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .howto-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    color: var(--amber);
+    min-width: 26px;
+    margin-top: 2px;
+  }
+
+  .howto-text {
+    font-size: 12px;
+    line-height: 1.8;
+    color: #00ff8899;
+  }
+
+  .howto-text strong { color: var(--green); }
+
+  /* Hint key display */
+  .hint-key {
+    display: inline-block;
+    background: rgba(0,255,136,0.08);
+    border: 1px solid #00ff8833;
+    border-radius: 2px;
+    padding: 1px 8px;
+    font-size: 12px;
+    color: var(--green);
+    letter-spacing: 2px;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 60px;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #00ff8833;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Particle burst */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: burst 0.8s ease-out forwards;
+    z-index: 9998;
+  }
+
+  @keyframes burst {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0) translate(var(--tx), var(--ty)); }
+  }
+
+  /* Mobile tweaks */
+  @media (max-width: 520px) {
+    .header h1 { font-size: 28px; }
+    .input-group { flex-direction: column; }
+    .btn { width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="matrix-bg"></canvas>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-eyebrow">▓▓ SISTEM KEAMANAN BERLAPIS ▓▓</div>
+    <h1>VAULT//CLASSIFIED</h1>
+    <div class="header-sub">ENKRIPSI MULTI-LAPIS · KODE BERUBAH SETIAP HARI</div>
+  </div>
+
+  <!-- CLOCK -->
+  <div class="live-clock">
+    <div class="clock-display" id="clock">--:--:--</div>
+    <div class="date-display" id="date-display">MEMUAT...</div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-label" id="progress-label">LAPIS 0/3 TERBUKA</div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+
+  <!-- LAYER 1 -->
+  <div class="panel layer" id="layer1" style="animation-delay:0.1s">
+    <div class="panel-label">▸ LAPISAN 01 // ENKRIPSI CAESAR SHIFT</div>
+    <div class="layer-header">
+      <span class="layer-number">LAYER 01</span>
+      <span class="layer-name">CAESAR CIPHER</span>
+      <span class="layer-status status-locked" id="status1">● LOCKED</span>
+    </div>
+    <div class="layer-content" id="content1">
+      <div style="font-size:11px;color:#00ff8866;margin-bottom:12px;letter-spacing:1px;">
+        Kode hari ini telah dienkripsi dengan Caesar Cipher. Setiap huruf bergeser sejauh nilai kunci hari ini. Masukkan kode terenkripsi untuk membuka lapisan pertama.
+      </div>
+      <div class="code-box">
+        <span class="code-tag">▸ KODE TERENKRIPSI HARI INI:</span>
+        <span id="encrypted1"></span>
+      </div>
+      <div style="font-size:11px;color:#ffaa0066;margin-top:8px;letter-spacing:1px;">
+        💡 Petunjuk: Kunci shift = <span class="hint-key" id="hint-shift"></span>
+      </div>
+      <div class="input-group">
+        <input class="cipher-input" id="input1" placeholder="MASUKKAN KODE..." maxlength="30" autocomplete="off" />
+        <button class="btn" onclick="checkLayer1()">VERIFIKASI</button>
+      </div>
+      <div class="alert" id="alert1"></div>
+    </div>
+  </div>
+
+  <!-- LAYER 2 -->
+  <div class="panel layer locked" id="layer2" style="animation-delay:0.2s">
+    <div class="panel-label">▸ LAPISAN 02 // ENKRIPSI BINARY HASH</div>
+    <div class="layer-header">
+      <span class="layer-number">LAYER 02</span>
+      <span class="layer-name">BINARY + ATBASH</span>
+      <span class="layer-status status-locked" id="status2">● LOCKED</span>
+    </div>
+    <div class="layer-content" id="content2">
+      <div style="font-size:11px;color:#00ff8866;margin-bottom:12px;letter-spacing:1px;">
+        Lapisan kedua menggunakan enkripsi Atbash (A=Z, B=Y, ...). Masukkan jawaban lapisan 1 untuk mendapatkan kata kunci lapisan ini.
+      </div>
+      <div class="code-box">
+        <span class="code-tag">▸ KODE ATBASH HARI INI:</span>
+        <span id="encrypted2"></span>
+      </div>
+      <div class="input-group">
+        <input class="cipher-input" id="input2" placeholder="DECODE ATBASH..." maxlength="30" autocomplete="off" />
+        <button class="btn" onclick="checkLayer2()">VERIFIKASI</button>
+      </div>
+      <div class="alert" id="alert2"></div>
+    </div>
+  </div>
+
+  <!-- LAYER 3 -->
+  <div class="panel layer locked" id="layer3" style="animation-delay:0.3s">
+    <div class="panel-label">▸ LAPISAN 03 // MASTER PASSWORD NUMERIK</div>
+    <div class="layer-header">
+      <span class="layer-number">LAYER 03</span>
+      <span class="layer-name">DAILY NUMERIC KEY</span>
+      <span class="layer-status status-locked" id="status3">● LOCKED</span>
+    </div>
+    <div class="layer-content" id="content3">
+      <div style="font-size:11px;color:#00ff8866;margin-bottom:12px;letter-spacing:1px;">
+        Lapisan terakhir: kode numerik rahasia. Kode ini dihitung dari tanggal hari ini menggunakan algoritma tersembunyi. Hanya orang yang mengetahui rumusnya yang bisa membukanya.
+      </div>
+      <div class="code-box">
+        <span class="code-tag">▸ HINT FORMULA:</span>
+        <span id="hint3" style="font-size:11px;letter-spacing:2px;"></span>
+      </div>
+      <div class="input-group">
+        <input class="cipher-input" id="input3" placeholder="KODE NUMERIK 6 DIGIT..." maxlength="6" autocomplete="off" type="password" />
+        <button class="btn" onclick="checkLayer3()">BUKA VAULT</button>
+      </div>
+      <div class="alert" id="alert3"></div>
+    </div>
+  </div>
+
+  <!-- VAULT OPEN -->
+  <div class="vault-content panel" id="vault-open">
+    <div class="panel-label">▸ AKSES DIBERIKAN // VAULT TERBUKA</div>
+    <div class="vault-icon">🔓</div>
+    <div class="vault-title">AKSES DIBERIKAN</div>
+    <div class="vault-subtitle">SEMUA LAPISAN ENKRIPSI BERHASIL DITEMBUS</div>
+    <div class="secret-message" id="secret-msg"></div>
+    <div style="font-size:10px;letter-spacing:3px;color:#00ff8844;margin-top:16px;">
+      VAULT AKAN TERKUNCI KEMBALI PADA TENGAH MALAM
+    </div>
+    <div style="margin-top:20px;">
+      <button class="btn btn-danger" onclick="resetVault()">⟳ KUNCI ULANG VAULT</button>
+    </div>
+  </div>
+
+  <!-- HOW TO -->
+  <div class="panel howto" style="animation: fadeUp 0.8s 0.4s ease both;">
+    <div class="panel-label">▸ CARA KERJA SISTEM</div>
+    <div class="howto-row">
+      <span class="howto-num">01</span>
+      <span class="howto-text"><strong>Caesar Cipher</strong> — Setiap huruf bergeser sebanyak N posisi di alfabet. Nilai N berubah setiap hari berdasarkan tanggal.</span>
+    </div>
+    <div class="howto-row">
+      <span class="howto-num">02</span>
+      <span class="howto-text"><strong>Atbash Cipher</strong> — Setiap huruf dibalik: A↔Z, B↔Y, C↔X, dst. Kata kunci berbeda setiap hari.</span>
+    </div>
+    <div class="howto-row">
+      <span class="howto-num">03</span>
+      <span class="howto-text"><strong>Kode Numerik Harian</strong> — Dihitung dari rumus tersembunyi berbasis tanggal. Berubah tepat pukul 00:00 setiap hari.</span>
+    </div>
+    <div class="howto-row">
+      <span class="howto-num">⚠</span>
+      <span class="howto-text" style="color:#ffaa0099;">Semua kode otomatis direset setiap tengah malam. Tidak ada kode yang sama antara dua hari.</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    ▓▓▓ SISTEM KEAMANAN AKTIF · SEMUA AKTIVITAS DICATAT · © VAULT CLASSIFIED ▓▓▓
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// MATRIX RAIN BACKGROUND
+// ═══════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('matrix-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, cols, drops;
+
+  function init() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cols = Math.floor(W / 18);
+    drops = Array(cols).fill(0).map(() => Math.random() * -H);
+  }
+
+  function draw() {
+    ctx.fillStyle = 'rgba(3,10,6,0.05)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#00ff88';
+    ctx.font = '14px Share Tech Mono';
+    const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ01ABCDEF'.split('');
+    drops.forEach((y, i) => {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(char, i * 18, y);
+      if (y > H && Math.random() > 0.975) drops[i] = 0;
+      drops[i] += 18;
+    });
+  }
+
+  init();
+  window.addEventListener('resize', init);
+  setInterval(draw, 50);
+})();
+
+// ═══════════════════════════════════════════════
+// DAILY SECRET GENERATOR
+// ═══════════════════════════════════════════════
+
+function getTodayKey() {
+  const d = new Date();
+  // Key unique to today (YYYYMMDD as integer)
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+function seededRand(seed) {
+  // Simple deterministic PRNG from seed
+  let x = Math.sin(seed + 1) * 743852;
+  return x - Math.floor(x);
+}
+
+// Word banks for building secret words
+const WORDS_L1 = ['SHADOW','CIPHER','RAVEN','STORM','FALCON','MATRIX','GHOST','VIPER'];
+const WORDS_L2 = ['DELTA','OMEGA','ALPHA','SIGMA','THETA','KAPPA','ZETA','NOVA'];
+const WORDS_L3_MSGS = [
+  'Kamu berhasil menembus semua lapisan enkripsi. Pesan rahasia hari ini: Kepercayaan dibangun dari kejujuran.',
+  'Akses penuh diberikan. Misi hari ini: Jadilah versi terbaikmu setiap hari.',
+  'Vault terbuka. Kode kehormatan: Disiplin adalah kebebasan sejati.',
+  'Semua enkripsi ditembus. Kata bijak hari ini: Pengetahuan adalah senjata paling kuat.',
+  'Selamat! Pesan tersembunyi: Setiap langkah kecil membawa perubahan besar.',
+  'Akses diberikan. Rahasia hari ini: Orang sukses tidak pernah berhenti belajar.',
+  'Vault terbuka. Misi selesai: Integritas adalah nilai paling berharga yang kamu miliki.'
+];
+
+function caesarEncrypt(text, shift) {
+  return text.split('').map(c => {
+    if (c >= 'A' && c <= 'Z') {
+      return String.fromCharCode((c.charCodeAt(0) - 65 + shift) % 26 + 65);
+    }
+    return c;
+  }).join('');
+}
+
+function atbashEncrypt(text) {
+  return text.split('').map(c => {
+    if (c >= 'A' && c <= 'Z') {
+      return String.fromCharCode(90 - (c.charCodeAt(0) - 65));
+    }
+    return c;
+  }).join('');
+}
+
+// Generate all daily secrets
+let DAILY = {};
+function generateDailySecrets() {
+  const key = getTodayKey();
+  const r1 = seededRand(key);
+  const r2 = seededRand(key * 7);
+  const r3 = seededRand(key * 13);
+  const r4 = seededRand(key * 17);
+  const r5 = seededRand(key * 23);
+
+  // Layer 1: Caesar
+  const shift = Math.floor(r1 * 20) + 3; // 3–22
+  const word1 = WORDS_L1[Math.floor(r2 * WORDS_L1.length)];
+  const encrypted1 = caesarEncrypt(word1, shift);
+
+  // Layer 2: Atbash
+  const word2 = WORDS_L2[Math.floor(r3 * WORDS_L2.length)];
+  const encrypted2 = atbashEncrypt(word2);
+
+  // Layer 3: Numeric code
+  // Formula: (day * prime1 + month * prime2 + last2digits_of_year * prime3) mod 900000 + 100000
+  const d = new Date();
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const yr = d.getFullYear() % 100;
+  const primes = [137, 251, 373];
+  const numCode = String((day * primes[0] + month * primes[1] + yr * primes[2]) % 900000 + 100000);
+
+  // Secret message
+  const msgIdx = Math.floor(r5 * WORDS_L3_MSGS.length);
+
+  DAILY = { shift, word1, encrypted1, word2, encrypted2, numCode, msgIdx };
+}
+
+// ═══════════════════════════════════════════════
+// CLOCK & DATE
+// ═══════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${hh}:${mm}:${ss}`;
+
+  const days = ['MINGGU','SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU'];
+  const months = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES'];
+  document.getElementById('date-display').textContent =
+    `${days[now.getDay()]} · ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+// ═══════════════════════════════════════════════
+// LAYER STATE
+// ═══════════════════════════════════════════════
+let unlockedLayers = 0;
+const TOTAL_LAYERS = 3;
+
+function updateProgress() {
+  const pct = (unlockedLayers / TOTAL_LAYERS) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent =
+    `LAPIS ${unlockedLayers}/${TOTAL_LAYERS} TERBUKA`;
+}
+
+function showAlert(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = `alert alert-${type} show`;
+  el.textContent = msg;
+  if (type !== 'error') setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function unlockLayer(num) {
+  const el = document.getElementById(`layer${num}`);
+  el.classList.remove('locked');
+  el.classList.add('unlocked');
+  document.getElementById(`status${num}`).className = 'layer-status status-unlocked';
+  document.getElementById(`status${num}`).textContent = '● UNLOCKED';
+  unlockedLayers = Math.max(unlockedLayers, num);
+  updateProgress();
+  spawnParticles();
+
+  // Unlock next layer display
+  if (num < TOTAL_LAYERS) {
+    document.getElementById(`layer${num+1}`).classList.remove('locked');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// LAYER CHECK FUNCTIONS
+// ═══════════════════════════════════════════════
+function checkLayer1() {
+  const val = document.getElementById('input1').value.trim().toUpperCase();
+  if (!val) { showAlert('alert1', 'warn', '⚠ Masukkan kode terlebih dahulu.'); return; }
+  if (val === DAILY.word1) {
+    showAlert('alert1', 'success', '✓ BENAR! Lapisan 1 terbuka. Lanjut ke lapisan 2.');
+    unlockLayer(1);
+    // Show layer 2 code
+    document.getElementById('encrypted2').textContent = DAILY.encrypted2;
+  } else {
+    showAlert('alert1', 'error', '✗ SALAH. Coba lagi. Gunakan Caesar shift yang tepat.');
+    shake(document.getElementById('layer1'));
+  }
+}
+
+function checkLayer2() {
+  const val = document.getElementById('input2').value.trim().toUpperCase();
+  if (!val) { showAlert('alert2', 'warn', '⚠ Masukkan kode terlebih dahulu.'); return; }
+  if (val === DAILY.word2) {
+    showAlert('alert2', 'success', '✓ BENAR! Lapisan 2 terbuka. Satu langkah lagi...');
+    unlockLayer(2);
+    // Show layer 3 hint
+    const d = new Date();
+    document.getElementById('hint3').textContent =
+      `(TANGGAL × 137) + (BULAN × 251) + (TAHUN2 × 373) mod 900000 + 100000`;
+  } else {
+    showAlert('alert2', 'error', '✗ SALAH. Ingat: Atbash = balik urutan alfabet (A=Z, B=Y...)');
+    shake(document.getElementById('layer2'));
+  }
+}
+
+function checkLayer3() {
+  const val = document.getElementById('input3').value.trim();
+  if (!val) { showAlert('alert3', 'warn', '⚠ Masukkan kode numerik terlebih dahulu.'); return; }
+  if (val === DAILY.numCode) {
+    unlockLayer(3);
+    openVault();
+  } else {
+    showAlert('alert3', 'error', '✗ KODE SALAH. Periksa kembali perhitunganmu.');
+    shake(document.getElementById('layer3'));
+    // Flash red
+    document.getElementById('layer3').style.borderColor = '#ff2244';
+    setTimeout(() => document.getElementById('layer3').style.borderColor = '', 800);
+  }
+}
+
+function openVault() {
+  document.getElementById('vault-open').classList.add('visible');
+  document.getElementById('secret-msg').innerHTML =
+    `<div style="font-size:10px;letter-spacing:3px;color:#00ff8855;margin-bottom:12px;">▸ PESAN RAHASIA HARI INI</div>` +
+    WORDS_L3_MSGS[DAILY.msgIdx] +
+    `<div style="margin-top:20px;font-family:Orbitron,monospace;font-size:12px;color:#ffaa00;letter-spacing:3px;">` +
+    `KODE VAULT: ${DAILY.numCode}</div>`;
+  document.getElementById('vault-open').scrollIntoView({ behavior: 'smooth' });
+  spawnParticles(30);
+}
+
+function resetVault() {
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════
+// EFFECTS
+// ═══════════════════════════════════════════════
+function shake(el) {
+  el.style.transform = 'translateX(-8px)';
+  setTimeout(() => el.style.transform = 'translateX(8px)', 80);
+  setTimeout(() => el.style.transform = 'translateX(-5px)', 160);
+  setTimeout(() => el.style.transform = 'translateX(5px)', 240);
+  setTimeout(() => el.style.transform = '', 320);
+}
+
+function spawnParticles(n = 15) {
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 6 + 3;
+    const colors = ['#00ff88','#ffaa00','#00aaff'];
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      top:${Math.random()*80+10}vh;
+      left:${Math.random()*80+10}vw;
+      --tx:${(Math.random()-0.5)*200}px;
+      --ty:${(Math.random()-0.5)*200}px;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 800);
+  }
+}
+
+// Enter key support
+['input1','input2','input3'].forEach((id, i) => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (i === 0) checkLayer1();
+      else if (i === 1) checkLayer2();
+      else checkLayer3();
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+generateDailySecrets();
+updateClock();
+setInterval(updateClock, 1000);
+
+// Populate layer 1 display
+document.getElementById('encrypted1').textContent = DAILY.encrypted1;
+document.getElementById('hint-shift').textContent = `+${DAILY.shift}`;
+
+updateProgress();
+</script>
+</body>
+</html>
